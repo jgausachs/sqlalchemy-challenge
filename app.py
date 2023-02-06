@@ -1,3 +1,4 @@
+# Set up dependencies
 import numpy as np
 
 import sqlalchemy
@@ -40,7 +41,7 @@ def home():
 @app.route("/api/v1.0/precipitation")
 def precipitation():
     """Convert the query results to a dictionary by using date as the key and prcp as the value"""
-    """"Return the JSON representation of the dictionary"""
+    """Return the JSON representation of the dictionary"""
 
     # Session (link) from Python to the DB
     session = Session(engine)
@@ -57,7 +58,6 @@ def precipitation():
         precipitation_dict["prcp"] = prcp
         precipitation_res.append(precipitation_dict)
 
-    # Retun the JSON representation of the precitation_res dictionary
     return jsonify(precipitation_res)
 
 @app.route("/api/v1.0/stations")
@@ -74,7 +74,6 @@ def stations():
     # Convert list of tuples into normal list
     stations = list(np.ravel(results))
 
-    # Return the JSON representation of the stations list
     return jsonify(stations)
 
 @app.route("/api/v1.0/tobs")
@@ -93,37 +92,37 @@ def temps():
     # Convert list of tuples into normal list
     temps = list(np.ravel(results))
 
-    # Return the JSON representation of the temps list
     return jsonify(temps)
 
-@app.route("/api/v1.0/temp/<start>")
 @app.route("/api/v1.0/temp/<start>/<end>")
-def stats(start=None, end=None):
+def stats(start, end):
     """Return a JSON list of the minimum temperature, the average temperature,"""
     """and the maximum temperature for a specified start or start-end range"""
 
     # Session (link) from Python to the DB
     session = Session(engine)
 
-    # Logic when start date only given
+    # Logic for start date only given
     if not end:
         results = session.query(\
             func.min(Measurement.tobs),\
             func.avg(Measurement.tobs),\
             func.max(Measurement.tobs)).\
-        filter(Measurement.date >= start).all()
-        temps = list(np.ravel(results))
-        return jsonify(temps)
+            filter(Measurement.date >= start).all()
+        stats = list(np.ravel(results))
 
-    # Logic when start and end dates give
+        return jsonify(stats)
+
+    # Logic for start and end dates given
     results = session.query(\
         func.min(Measurement.tobs),\
         func.avg(Measurement.tobs),\
         func.max(Measurement.tobs)).\
         filter(Measurement.date >= start).\
         filter(Measurement.date <= end).all()
-    temps = list(np.ravel(results))
-    return jsonify(temps)
+    stats = list(np.ravel(results))
+
+    return jsonify(stats)
 
 if __name__ == '__main__':
     app.run(debug=True)
