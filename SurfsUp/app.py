@@ -35,6 +35,7 @@ def home():
         f"/api/v1.0/precipitation<br/>"
         f"/api/v1.0/stations<br/>"
         f"/api/v1.0/tobs<br/>"
+        f"/api/v1.0/temp/start<br/>"
         f"/api/v1.0/temp/start/end"
     )
 
@@ -43,14 +44,16 @@ def precipitation():
     """Convert the query results to a dictionary by using date as the key and prcp as the value"""
     """Return the JSON representation of the dictionary"""
 
-    # Session (link) from Python to the DB
+    # Session (link) from Python to the database
     session = Session(engine)
 
     # Query precipitation date and quantity from Measurement table
-    results = session.query(Measurement.date, Measurement.prcp).all()
+    # Return result for dates after 2016-08-23
+    results = session.query(Measurement.date, Measurement.prcp).\
+        filter(Measurement.date >= '2016-08-23').all()
     session.close()
 
-    # Create a dictionary from the row data and append to a list of precipitation_res
+    # Create a dictionary from the row data and append to list precipitation_res
     precipitation_res = []
     for date, prcp in results:
         precipitation_dict = {}
@@ -64,7 +67,7 @@ def precipitation():
 def stations():
     """Return a JSON list of stations from the dataset"""
 
-    # Session (link) from Python to the DB
+    # Session (link) from Python to the database
     session = Session(engine)
 
     # Query all stations from Station table
@@ -80,7 +83,7 @@ def stations():
 def temps():
     """Return a JSON list of temperature observations for the previous year"""
 
-    # Session (link) from Python to the DB
+    # Session (link) from Python to the database
     session = Session(engine)
 
     # Query the dates and temperature observations of the most active station for the last year of data
@@ -94,36 +97,42 @@ def temps():
 
     return jsonify(temps)
 
-@app.route("/api/v1.0/temp/<start>/<end>")
-def stats(start, end):
+@app.route("/api/v1.0/temp/<start>")
+def statssh(start):
     """Return a JSON list of the minimum temperature, the average temperature,"""
-    """and the maximum temperature for a specified start or start-end range"""
+    """and the maximum temperature for the specified start date"""
 
-    # Session (link) from Python to the DB
+    # Session (link) from Python to the database
     session = Session(engine)
 
-    # Logic for start date only given
-    if not end:
-        results = session.query(\
-            func.min(Measurement.tobs),\
-            func.avg(Measurement.tobs),\
-            func.max(Measurement.tobs)).\
-            filter(Measurement.date >= start).all()
-        stats = list(np.ravel(results))
+    # Stats calc logic for measurements past start date; session close; return JSON
+    results = session.query(\
+        func.min(Measurement.tobs),\
+        func.avg(Measurement.tobs),\
+        func.max(Measurement.tobs)).\
+        filter(Measurement.date >= start).all()
+    session.close()
+    stats = list(np.ravel(results))
+    return jsonify(stats)
 
-        return jsonify(stats)
+@app.route("/api/v1.0/temp/<start>/<end>")
+def statslg(start, end):
+    """Return a JSON list of the minimum temperature, the average temperature,"""
+    """and the maximum temperature for the specified start-end range"""
 
-    # Logic for start and end dates given
+    # Session (link) from Python to the database
+    session = Session(engine)
+
+    # Stats calc logic for measurements between start and end date; session close; return JSON
     results = session.query(\
         func.min(Measurement.tobs),\
         func.avg(Measurement.tobs),\
         func.max(Measurement.tobs)).\
         filter(Measurement.date >= start).\
         filter(Measurement.date <= end).all()
+    session.close()
     stats = list(np.ravel(results))
-
     return jsonify(stats)
 
 if __name__ == '__main__':
     app.run(debug=True)
-
